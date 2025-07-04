@@ -1,133 +1,124 @@
-# Unbox - Intelligent Archive Extractor
+# Unbox - Archive Extractor
 
-[![Apache License 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-![Go Version](https://img.shields.io/badge/Go-1.20%2B-blue)
+[![forthebadge](data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjIuMzM5MzA1ODc3Njg1NTUiIGhlaWdodD0iMzUiIHZpZXdCb3g9IjAgMCAxMjIuMzM5MzA1ODc3Njg1NTUgMzUiPjxyZWN0IHdpZHRoPSI3Ny41MTc4NzE4NTY2ODk0NSIgaGVpZ2h0PSIzNSIgZmlsbD0iI2ZhNWM1NSIvPjxyZWN0IHg9Ijc3LjUxNzg3MTg1NjY4OTQ1IiB3aWR0aD0iNDQuODIxNDM0MDIwOTk2MDk0IiBoZWlnaHQ9IjM1IiBmaWxsPSIjZmZmZmZmIi8+PHRleHQgeD0iMzguNzU4OTM1OTI4MzQ0NzMiIHk9IjIxLjUiIGZvbnQtc2l6ZT0iMTIiIGZvbnQtZmFtaWx5PSInUm9ib3RvJywgc2Fucy1zZXJpZiIgZmlsbD0iI0ZGRkZGRiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgbGV0dGVyLXNwYWNpbmc9IjIiPkFQQUNIRTwvdGV4dD48dGV4dCB4PSI5OS45Mjg1ODg4NjcxODc1IiB5PSIyMS41IiBmb250LXNpemU9IjEyIiBmb250LWZhbWlseT0iJ01vbnRzZXJyYXQnLCBzYW5zLXNlcmlmIiBmaWxsPSIjZmE1YzU1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iOTAwIiBsZXR0ZXItc3BhY2luZz0iMiI+Mi4wPC90ZXh0Pjwvc3ZnPg==)](https://forthebadge.com)
 
-`Unbox` 是一个智能化的命令行归档文件解压工具，能够自动识别多种压缩格式并智能处理文件结构。它特别擅长处理嵌套归档和优化目录结构，让文件解压变得简单高效。
+`Unbox` 是一个命令行归档文件解压工具，支持多种压缩格式并能处理嵌套归档。
 
-## ✨ 功能特性
+## 功能特性
 
-- **多格式支持**：自动检测并解压 `tar`, `zip`, `rar`, `gzip`, `bzip2`, `xz`, `zstd` 等20+格式
-- **智能结构处理**：
-  - 自动重名名冲突文件
-  - 智能展开单文件目录
-  - 扁平化嵌套结构 (`-f` 选项)
+- **多格式支持**：自动检测并解压 `tar`, `zip`, `rar`, `gzip`, `bzip2`, `xz`, `zstd`, `7z` 等格式
 - **递归解压**：自动检测并解压嵌套的归档文件 (`-r` 选项)
 - **安全操作**：
-  - 交互式操作确认
-  - 非交互批处理模式 (`-n` 选项)
-  - 权限自动修复
-- **轻量化**：纯Go实现，无额外依赖
+  - 防止路径遍历攻击
+- **批量处理**：支持同时解压多个文件
 
-## 📦 安装
+## 安装
 
 ### 源码安装 (需Go 1.20+)
 ```bash
 go install github.com/Geekstrange/Unbox@latest
 ```
 
-### 二进制下载
+### 依赖说明
 
-从 Releases 页面 下载已编译二进制
+部分格式需要系统安装：
 
-## 🚀 使用指南
+```bash
+# Debian/Ubuntu
+sudo apt install unrar p7zip-full zstd
+
+# RHEL/CentOS
+sudo yum install unrar p7zip zstd
+```
+
+## 使用指南
 
 ### 基本用法
 
 ```bash
-Unbox archive.zip
-Unbox file.tar.gz
+Unbox archive.zip        # 创建archive目录并解压
+Unbox file1.tar file2.zip # 批量解压
 ```
 
 ### 常用选项
 
-| 选项 |         描述         |         示例          |
-| :--: | :------------------: | :-------------------: |
-| `-r` |   递归解压嵌套归档   | `Unbox -r bundle.zip` |
-| `-f` | 扁平化输出到当前目录 |  `Unbox -f data.tgz`  |
-| `-l` | 列出归档内容而不解压 | `Unbox -l files.rar`  |
-| `-o` |    覆盖已存在文件    | `Unbox -o update.zip` |
-| `-n` |   非交互批处理模式   |   `Unbox -n *.tar`    |
-| `-q` |  安静模式(减少输出)  | `Unbox -q large.zip`  |
-| `-v` |     显示版本信息     |      `Unbox -v`       |
-
-### 处理远程文件
-
-```
-Unbox https://example.com/archive.tar.gz
-```
+|    选项     |       描述       |         示例          |
+| :---------: | :--------------: | :-------------------: |
+|    `-r`     | 递归解压嵌套归档 | `Unbox -r bundle.zip` |
+|    `-l`     |   列出归档内容   | `Unbox -l files.rar`  |
+|    `-o`     | 解压后删除源文件 | `Unbox -o update.zip` |
+|    `-s`     | 显示支持格式列表 |      `Unbox -s`       |
+|    `-h`     |   显示帮助信息   |      `Unbox -h`       |
+| `--version` |   显示版本信息   |   `Unbox --version`   |
 
 ### 递归解压示例
 
 ```bash
-# 解压主归档+所有嵌套归档
 Unbox -r software_bundle.zip
-
-# 输出示例
-Processing software_bundle.zip
-  Contains 3 nested archives
-Extract nested? [A]lways/[O]nce/[N]ever/[L]ist? A
-✅ Successfully extracted 4 archives
+# 输出:
+# 正在解压 software_bundle.zip 到 software_bundle...
+# 开始递归解压嵌套文件: software_bundle
 ```
 
-## 🧩 技术架构
+## 解压行为说明
+
+1. 默认创建与归档同名的目录（不含扩展名）
+2. 所有内容解压到该目录中
+3. 目录权限设为755，文件权限设为644
+4. 递归解压时会删除已解压的嵌套归档
+
+## 常见问题
+
+**Q: 解压后文件权限不正确？**
+A: 工具会自动设置目录为755，文件为644权限
+
+**Q: 为什么解压后多了一层目录？**
+A: 这是默认行为，避免污染当前目录
+
+**Q: 如何批量解压当前目录所有zip文件？**
+
+```bash
+Unbox *.zip
+```
+
+**Q: 支持哪些格式？**
+A: 运行 `Unbox -s` 查看完整列表：
+
+```bash
+7z
+Z
+arj
+br
+bz2
+...（完整列表见实际输出）
+```
+
+**Q: rar/7z解压报错？**
+A: 确保系统已安装 `unrar` 和 `7z` 命令
+
+## 技术说明
 
 ```mermaid
 graph TD
     A[命令行输入] --> B[解析参数]
-    B --> C[创建Extractor]
-    C --> D{识别文件类型}
-    D -->|通过扩展名| E[创建对应提取器]
-    D -->|通过魔数| F[创建对应提取器]
-    E/G --> H[执行解压]
-    H --> I[内容结构分析]
-    I --> J{内容类型判断}
-    J -->|单一目录| K[匹配处理器]
-    J -->|单一文件| L[单文件处理器]
-    J -->|多文件| M[炸弹处理器]
-    J -->|空归档| N[空处理器]
-    K/M/L/N --> O[应用处理策略]
-    O --> P[递归检测]
-    P -->|发现嵌套| Q[递归解压]
-    Q --> R[完成]
+    B --> C[识别文件类型]
+    C --> D[创建解压目录]
+    D --> E[调用对应解压器]
+    E --> F[递归检测嵌套归档]
+    F --> G[递归解压]
+    G --> H[完成]
 ```
 
-## 🤝 贡献指南
 
-我们欢迎贡献！请遵循以下流程：
 
-1. Fork 仓库
-2. 创建特性分支 (`git checkout -b feature/your-feature`)
-3. 提交更改 (`git commit -am 'Add some feature'`)
-4. 推送分支 (`git push origin feature/your-feature`)
-5. 创建 Pull Request
+## 许可证
 
-**开发要求**：
+Apache License 2.0 - 详情见项目 LICENSE 文件
 
-- Go 1.20+
-- 遵循现有代码风格
-- 新增功能需包含测试
-- 更新文档 (README 或 godoc)
-
-## 📜 许可证
-
-本项目采用 **Apache License 2.0** - 详情见 LICENSE 文件。
-
-```
-Unbox version 0.0.1
-Copyright 2025 Geekstrange
-
-Licensed under the Apache License...
-```
-
-## ⁉️ 常见问题
-
-**Q: 如何解压受密码保护的归档？**
-A: 当前版本暂不支持加密归档的解压
-
-**Q: 解压后文件权限不正确？**
-A: `Unbox` 会自动设置目录为755，文件为644权限
-
-**Q: 为什么有些归档解压后多了一层目录？**
-A: 当归档内含同名目录时，`Unbox` 会保留原始结构。使用 `-f` 选项可扁平化输出
-
+主要变更总结：
+1. 移除了未实现功能的描述（扁平化、交互式、智能目录处理等）
+2. 修正了所有选项描述与实际代码匹配
+3. 添加了必要的依赖说明
+4. 简化了递归解压的说明
+5. 明确了默认解压行为（创建目录）
+6. 更新了常见问题与实际行为一致
