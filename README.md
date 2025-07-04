@@ -28,7 +28,7 @@ go install github.com/Geekstrange/Unbox@latest
 
 ### 二进制下载
 
-从 Releases 页面 下载预编译二进制
+从 Releases 页面 下载已编译二进制
 
 ## 🚀 使用指南
 
