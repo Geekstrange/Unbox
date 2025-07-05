@@ -26,7 +26,6 @@ var supportedFormats = map[string]func(string, string) error{
 	".zst":    extractZstd,
 	".rar":    extractRar,
 	".7z":     extract7z,
-	// 其他格式处理函数
 }
 
 // 命令行参数
@@ -103,7 +102,6 @@ zstd`
 )
 
 // ====================== 核心解压函数 ======================
-// ZIP解压
 func extractZip(src, dest string) error {
 	r, err := zip.OpenReader(src)
 	if err != nil {
@@ -112,7 +110,6 @@ func extractZip(src, dest string) error {
 	defer r.Close()
 
 	for _, f := range r.File {
-		// 安全校验：防止路径遍历攻击
 		if strings.Contains(f.Name, "..") {
 			return fmt.Errorf("拒绝解压含非法路径的文件: %s", f.Name)
 		}
@@ -146,18 +143,15 @@ func extractZip(src, dest string) error {
 	return nil
 }
 
-// TAR解压
 func extractTar(src, dest string) error {
 	file, err := os.Open(src)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
-
 	return extractTarStream(tar.NewReader(file), dest)
 }
 
-// TAR.GZ解压
 func extractTarGz(src, dest string) error {
 	file, err := os.Open(src)
 	if err != nil {
@@ -174,7 +168,6 @@ func extractTarGz(src, dest string) error {
 	return extractTarStream(tar.NewReader(gzReader), dest)
 }
 
-// GZIP解压
 func extractGzip(src, dest string) error {
 	file, err := os.Open(src)
 	if err != nil {
@@ -188,7 +181,6 @@ func extractGzip(src, dest string) error {
 	}
 	defer gzReader.Close()
 
-	// 生成解压后文件名（去掉.gz后缀）
 	baseName := filepath.Base(src)
 	targetName := strings.TrimSuffix(baseName, ".gz")
 	targetPath := filepath.Join(dest, targetName)
@@ -203,7 +195,6 @@ func extractGzip(src, dest string) error {
 	return err
 }
 
-// BZIP2解压
 func extractBzip2(src, dest string) error {
 	file, err := os.Open(src)
 	if err != nil {
@@ -212,8 +203,6 @@ func extractBzip2(src, dest string) error {
 	defer file.Close()
 
 	bzReader := bzip2.NewReader(file)
-
-	// 生成解压后文件名（去掉.bz2后缀）
 	baseName := filepath.Base(src)
 	targetName := strings.TrimSuffix(baseName, ".bz2")
 	targetPath := filepath.Join(dest, targetName)
@@ -228,31 +217,25 @@ func extractBzip2(src, dest string) error {
 	return err
 }
 
-// RAR解压（需系统安装unrar）
 func extractRar(src, dest string) error {
 	cmd := exec.Command("unrar", "x", "-o+", src, dest)
 	return cmd.Run()
 }
 
-// 7Z解压（需系统安装7z）
 func extract7z(src, dest string) error {
 	cmd := exec.Command("7z", "x", "-o"+dest, src)
 	return cmd.Run()
 }
 
-// Zstandard解压（需系统安装zstd）
 func extractZstd(src, dest string) error {
-	// 生成解压后文件名（去掉.zst后缀）
 	baseName := filepath.Base(src)
 	targetName := strings.TrimSuffix(baseName, ".zst")
 	targetPath := filepath.Join(dest, targetName)
-
 	cmd := exec.Command("zstd", "-d", src, "-o", targetPath)
 	return cmd.Run()
 }
 
 // ====================== 辅助函数 ======================
-// 通用TAR流处理
 func extractTarStream(tr *tar.Reader, dest string) error {
 	for {
 		header, err := tr.Next()
@@ -287,14 +270,12 @@ func extractTarStream(tr *tar.Reader, dest string) error {
 	return nil
 }
 
-// 检测文件格式
 func detectFormat(filename string) (string, error) {
 	ext := filepath.Ext(filename)
 	if _, exists := supportedFormats[ext]; exists {
 		return ext, nil
 	}
 
-	// 处理复合扩展名（如.tar.gz）
 	if secondExt := filepath.Ext(strings.TrimSuffix(filename, ext)); secondExt != "" {
 		compoundExt := secondExt + ext
 		if _, exists := supportedFormats[compoundExt]; exists {
@@ -305,28 +286,61 @@ func detectFormat(filename string) (string, error) {
 	return "", fmt.Errorf("unsupported format: %s", ext)
 }
 
-// 递归解压实现
-func recursiveUnpack(dir string) error {
-	return filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if info.IsDir() || err != nil {
-			return nil
+// 递归解压实现（深度优先）
+func recursiveUnpackDir(dir string, depth int) error {
+	// 深度保护（防止无限递归）
+	if depth > 100 {
+		return fmt.Errorf("递归深度超过100层 疑似压缩炸弹: %s", dir)
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+
+	// 第一轮：处理当前目录的压缩文件
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
 		}
 
-		if ext, err := detectFormat(path); err == nil {
-			fmt.Printf("发现嵌套压缩包: %s\n", path)
-			outputDir := filepath.Dir(path)
-			if err := supportedFormats[ext](path, outputDir); err != nil {
-				fmt.Printf("解压失败: %v\n", err)
-				return nil
-			}
-			os.Remove(path) // 解压后删除嵌套压缩包
-			fmt.Printf("已解压并删除: %s\n", path)
+		fpath := filepath.Join(dir, entry.Name())
+		ext, err := detectFormat(fpath)
+		if err != nil {
+			continue
 		}
-		return nil
-	})
+
+		fmt.Printf("解压嵌套包: %s\n", fpath)
+		if err := supportedFormats[ext](fpath, dir); err != nil {
+			log.Printf("解压失败: %v", err)
+			continue
+		}
+
+		if err := os.Remove(fpath); err == nil {
+			fmt.Printf("已删除: %s\n", fpath)
+		}
+
+		// 立即递归处理当前目录（深度优先）
+		if err := recursiveUnpackDir(dir, depth+1); err != nil {
+			return err
+		}
+	}
+
+	// 第二轮：处理子目录
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		subdir := filepath.Join(dir, entry.Name())
+		if err := recursiveUnpackDir(subdir, depth+1); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
-// 列出压缩包内容
 func listContents(filename string) error {
 	ext, err := detectFormat(filename)
 	if err != nil {
@@ -405,17 +419,15 @@ func processFiles(files []string, recursiveFlag, deleteSource bool) {
 		wg.Add(1)
 		go func(f string) {
 			defer wg.Done()
-			sem <- struct{}{}        // 获取信号量
-			defer func() { <-sem }() // 释放信号量
+			sem <- struct{}{}
+			defer func() { <-sem }()
 
-			// 1. 检测文件格式
 			ext, err := detectFormat(f)
 			if err != nil {
 				log.Printf("错误[%s]: %v", f, err)
 				return
 			}
 
-			// 2. 创建解压目录
 			baseName := filepath.Base(f)
 			outputDir := strings.TrimSuffix(baseName, ext)
 			if err := os.MkdirAll(outputDir, 0755); err != nil {
@@ -423,7 +435,6 @@ func processFiles(files []string, recursiveFlag, deleteSource bool) {
 				return
 			}
 
-			// 3. 执行解压
 			fmt.Printf("正在解压 %s 到 %s...\n", f, outputDir)
 			if err := supportedFormats[ext](f, outputDir); err != nil {
 				log.Printf("解压失败[%s]: %v", f, err)
@@ -431,15 +442,13 @@ func processFiles(files []string, recursiveFlag, deleteSource bool) {
 			}
 			fmt.Printf("%s 解压完成!\n", f)
 
-			// 4. 递归解压
 			if recursiveFlag {
 				fmt.Printf("开始递归解压嵌套文件: %s\n", outputDir)
-				if err := recursiveUnpack(outputDir); err != nil {
+				if err := recursiveUnpackDir(outputDir, 0); err != nil {
 					log.Printf("递归解压出错[%s]: %v", outputDir, err)
 				}
 			}
 
-			// 5. 删除源文件
 			if deleteSource {
 				if err := os.Remove(f); err != nil {
 					log.Printf("删除源文件失败[%s]: %v", f, err)
@@ -458,7 +467,6 @@ func printHelp() {
 用法: unbox [选项] 压缩文件 [压缩文件2 ...]
 
 选项:
-  -f    解压文件 (默认操作)
   -r    递归解压嵌套压缩包
   -l    列出压缩包内容
   -o    解压后删除源文件
@@ -467,17 +475,16 @@ func printHelp() {
   --version 显示版本信息
 
 示例:
-  unbox -f archive.zip backup.tar
+  unbox archive.zip backup.tar
   unbox -rl nested.tar.gz data.zip
   unbox -l file1.tar file2.zip
   unbox -o *.zip *.tar.gz`)
 }
 
 func main() {
-	log.SetFlags(0)
-
+	log.SetFlags(0) // 禁用日志时间戳
 	flag.Parse()
-	files := flag.Args() // 获取所有非选项参数（压缩文件列表）
+	files := flag.Args()
 
 	switch {
 	case *version:
@@ -496,7 +503,7 @@ func main() {
 				log.Printf("预览失败 [%s]: %v", file, err)
 			}
 		}
-	default: // 默认执行解压操作
+	default:
 		if len(files) == 0 {
 			log.Fatal("用法: unbox [选项] 压缩文件 [压缩文件2 ...]")
 		}
