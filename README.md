@@ -1,6 +1,13 @@
 # Unbox - 智能解压工具
 
-[![Apache License 2.0](https://github.com/Geekstrange/unbox/raw/main/img/Apache-License-2.0.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
+<a href="https://www.apache.org/licenses/LICENSE-2.0.html" target="_blank">
+  <img
+    src="https://github.com/Geekstrange/unbox/blob/main/img/Apache-License-2.0.svg"
+    alt="Apache License 2.0"
+    width="180"
+    height="auto"
+  >
+</a>
 
 `Unbox` 是一个命令行归档文件解压工具，支持多种压缩格式并能处理嵌套归档。
 
