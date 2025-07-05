@@ -2,7 +2,7 @@
 
 <a href="https://www.apache.org/licenses/LICENSE-2.0.html" target="_blank">
   <img
-    src="https://github.com/Geekstrange/unbox/blob/main/img/Apache-License-2.0.svg"
+    src="https://github.com/Geekstrange/unbox/blob/main/img/Apache-License.svg"
     alt="Apache License 2.0"
     width="180"
     height="auto"
