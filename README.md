@@ -116,8 +116,7 @@ graph TD
     src="https://github.com/Geekstrange/unbox/blob/main/img/Apache-License-2.0.svg"
     alt="Apache License 2.0"
     width="180"
-    height="auto"
-  >
+    height="auto">
 </a>
 
 Apache License 2.0 - 详情见项目 LICENSE 文件
