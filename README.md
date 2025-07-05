@@ -1,14 +1,5 @@
 # Unbox - 智能解压工具
 
-<a href="https://www.apache.org/licenses/LICENSE-2.0.html" target="_blank">
-  <img
-    src="https://github.com/Geekstrange/unbox/blob/main/img/Apache-License.svg"
-    alt="Apache License 2.0"
-    width="180"
-    height="auto"
-  >
-</a>
-
 `Unbox` 是一个命令行归档文件解压工具，支持多种压缩格式并能处理嵌套归档。
 
 ## 功能特性
@@ -120,12 +111,13 @@ graph TD
 
 ## 许可证
 
-Apache License 2.0 - 详情见项目 LICENSE 文件
+<a href="https://www.apache.org/licenses/LICENSE-2.0.html" target="_blank">
+  <img
+    src="https://github.com/Geekstrange/unbox/blob/main/img/Apache-License-2.0.svg"
+    alt="Apache License 2.0"
+    width="180"
+    height="auto"
+  >
+</a>
 
-主要变更总结：
-1. 移除了未实现功能的描述（扁平化、交互式、智能目录处理等）
-2. 修正了所有选项描述与实际代码匹配
-3. 添加了必要的依赖说明
-4. 简化了递归解压的说明
-5. 明确了默认解压行为（创建目录）
-6. 更新了常见问题与实际行为一致
+Apache License 2.0 - 详情见项目 LICENSE 文件
