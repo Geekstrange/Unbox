@@ -1,6 +1,6 @@
 # Unbox - 智能解压工具
 
-[![License](https://badgen.net/badge/license/Apache%202.0/blue)](https://opensource.org/licenses/Apache-2.0)
+[![Apache License 2.0](https://github.com/Geekstrange/unbox/raw/main/img/Apache-License-2.0.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 
 `Unbox` 是一个命令行归档文件解压工具，支持多种压缩格式并能处理嵌套归档。
 
