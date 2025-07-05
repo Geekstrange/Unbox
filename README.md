@@ -1,6 +1,6 @@
 # Unbox - 智能解压工具
 
-[![forthebadge](https://forthebadge.com?primaryBGColor=%23e13a31&primaryTextColor=%23FFFFFF&secondaryBGColor=%23ffffff&secondaryTextColor=%23e13a31&tertiaryBGColor=%232674A4&tertiaryTextColor=%23FFFFFF&primaryLabel=Apache&secondaryLabel=2.0&tertiaryLabel=&panels=2#/generator)](https://forthebadge.com)
+[![License](https://badgen.net/badge/license/Apache%202.0/blue)](https://opensource.org/licenses/Apache-2.0)
 
 `Unbox` 是一个命令行归档文件解压工具，支持多种压缩格式并能处理嵌套归档。
 
