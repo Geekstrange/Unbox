@@ -114,11 +114,12 @@ graph TD
 | **操作系统** | **架构**              | **文件名**                      |
 | :----------- | :-------------------- | :------------------------------ |
 | **Windows**  | x86_64/AMD64          | `unbox-vx.x.x-windows_amd64.exe` |
-|              | ARM64/aarch64         | `unbox-vx.x.x-windows_arm64.exe` |
+|              | ARM64/AArch64         | `unbox-vx.x.x-windows_arm64.exe` |
 | **Linux**    | x86_64/AMD64          | `unbox-vx.x.x-linux_amd64`       |
-|              | ARM64/aarch64         | `unbox-vx.x.x-linux_arm64`       |
-| **macOS**    | Intel (x86_64)        | `unbox-vx.x.x-darwin_amd64`      |
-|              | Apple Silicon (ARM64) | `unbox-vx.x.x-darwin_arm64`      |
+|              | ARM64/AArch64         | `unbox-vx.x.x-linux_arm64`       |
+|              | LoongArch         | `unbox-vx.x.x-linux_loong64`       |
+| **macOS**    | Intel (x86_64/AMD64)        | `unbox-vx.x.x-darwin_amd64`      |
+|              | Apple Silicon (ARM64/AArch64) | `unbox-vx.x.x-darwin_arm64`      |
 
 ## 如何确定我的系统架构
 
