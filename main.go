@@ -31,7 +31,7 @@ var supportedFormats = map[string]func(string, string) error{
 // 命令行参数
 var (
 	recursive  = flag.Bool("r", false, "递归解压嵌套压缩包")
-	list       = flag.Bool("l", false, "列出压缩包内容（自动递归预览嵌套压缩包）")
+	list       = flag.Bool("l", false, "列出压缩包内容 (自动递归预览嵌套压缩包)")
 	deleteOrig = flag.Bool("o", false, "解压后删除源文件")
 	version    = flag.Bool("version", false, "显示版本信息")
 	help       = flag.Bool("h", false, "显示帮助信息")
@@ -388,7 +388,7 @@ func recursiveUnpackDir(dir string, depth int) error {
 	return nil
 }
 
-// ====================== 预览功能（支持独立递归） ======================
+// ====================== 预览功能 (支持独立递归) ======================
 func listContents(filename string, depth int) error {
 	if depth > 10 { // 深度保护
 		return fmt.Errorf("递归深度超过10层: %s", filename)
@@ -423,7 +423,7 @@ func listSingleFileContents(filename string, depth int) error {
 	return nil
 }
 
-// ====================== 预览功能修复（支持嵌套压缩包内存预览） ======================
+// ====================== 预览功能修复 (支持嵌套压缩包内存预览) ======================
 func listZipContents(filename string, depth int) error {
     r, err := zip.OpenReader(filename)
     if err != nil {
@@ -448,7 +448,7 @@ func listZipContents(filename string, depth int) error {
         if _, err := detectFormat(f.Name); err == nil {
             fmt.Printf("%s%-40s %10d bytes [压缩包]\n", nestedIndent, f.Name, f.UncompressedSize64)
 
-            // 创建临时文件处理嵌套压缩包，保留扩展名
+            // 创建临时文件处理嵌套压缩包, 保留扩展名
             ext := filepath.Ext(f.Name)
             tmpFile, err := os.CreateTemp("", "unbox_*" + ext)
             if err != nil {
@@ -532,7 +532,7 @@ func listTarContents(filename string, depth int, isGzipped, isBzipped, isXzed bo
         if _, err := detectFormat(header.Name); err == nil {
             fmt.Printf("%s%-40s %10s [压缩包]\n", nestedIndent, header.Name, "文件")
 
-            // 创建临时文件，保留扩展名
+            // 创建临时文件, 保留扩展名
             ext := filepath.Ext(header.Name)
             tmpFile, err := os.CreateTemp("", "unbox_*" + ext)
             if err != nil {
@@ -625,7 +625,7 @@ func printHelp() {
     fmt.Printf(`
 %s[96m操作:%s
     %s[32m-r%s      递归解压嵌套压缩包
-    %s[32m-l%s      列出压缩包内容（自动递归预览嵌套压缩包）
+    %s[32m-l%s      列出压缩包内容 (自动递归预览嵌套压缩包)
     %s[32m-o%s      解压后删除源文件
     %s[32m-h%s      显示这条帮助信息
     %s[32m-s%s      显示支持格式列表
