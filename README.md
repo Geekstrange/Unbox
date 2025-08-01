@@ -76,23 +76,23 @@ Unbox -r software_bundle.zip
 
 ## 常见问题 / FAQ
 
-**Q: 解压后文件权限不正确？**
+**问: 解压后文件权限不正确？**
 
 **Q: File permissions are incorrect after extraction?**
 
-A: 工具会自动设置目录为 755, 文件为 644 权限
+答: 工具会自动设置目录为 755, 文件为 644 权限
 
 A: The tool automatically sets directories to 755 and files to 644 permissions
 
-**Q: 为什么解压后多了一层目录？**
+**问: 为什么解压后多了一层目录？**
 
 **Q: Why is there an extra directory layer after extraction?**
 
-A: 这是默认行为, 避免污染当前目录
+答: 这是默认行为, 避免污染当前目录
 
 A: This is default behavior to avoid cluttering the current directory
 
-**Q: 如何批量解压当前目录所有 zip 文件？**
+**问: 如何批量解压当前目录所有 zip 文件？**
 
 **Q: How to batch extract all zip files in the current directory?**
 
@@ -100,11 +100,11 @@ A: This is default behavior to avoid cluttering the current directory
 Unbox *.zip
 ```
 
-**Q: 支持哪些格式？**
+**问: 支持哪些格式？**
 
 **Q: Which formats are supported?**
 
-A: 运行 `Unbox -s` 查看完整列表:
+答: 运行 `Unbox -s` 查看完整列表:
 
 A: Run `Unbox -s` to see the full list:
 
@@ -178,7 +178,13 @@ arch
    - If `loong64` is displayed, your system is **LoongArch**
 ## 许可证 / License
 
-<a href="https://www.apache.org/licenses/LICENSE-2.0.html" target="_blank"><imgsrc="https://github.com/Geekstrange/unbox/blob/main/img/Apache-License.svg"alt="Apache License 2.0"width="180"height="auto"></a>
+<a href="https://www.apache.org/licenses/LICENSE-2.0.html" target="_blank">
+  <img
+    src="https://github.com/Geekstrange/unbox/blob/main/img/Apache-License.svg"
+    alt="Apache License 2.0"
+    width="180"
+    height="auto">
+</a>
 
 Apache License 2.0 - 详情见项目 LICENSE 文件
 Apache License 2.0 - See the project's LICENSE file for details
