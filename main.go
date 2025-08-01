@@ -94,11 +94,11 @@ func showHelp() {
     fmt.Printf(`
 %s[96mOptions:%s
     %s[32m-o%s      Delete original archive after successful extraction.
-    %s[32m-l%s      Show the file of the archived.
+    %s[32m-l%s      Display the contents of the archive.
     %s[32m-a%s      Add files to the archived.
     %s[32m-d%s      Delete file form the archive.
-    %s[32m-h%s      Display this help message.
-    %s[32m-v%s      Display version and license message.
+    %s[32m-h%s      Show this help message.
+    %s[32m-v%s      Show version and license information.
 
 %s[96mExamples:%s
     %s[93munbox archive.zip backup.tar%s
@@ -119,6 +119,69 @@ func showHelp() {
         "\033", ansiReset,
         "\033", ansiReset,
     )
+}
+
+const (
+        versionText = `
+------------Unbox version 0.0.4------------
+Copyright 2025 Geekstrange
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.`
+)
+
+// ====================== 渐变色输出函数 ======================
+func isTerminal() bool {
+        fi, _ := os.Stdout.Stat()
+        return (fi.Mode() & os.ModeCharDevice) != 0
+}
+
+func addGradient(text string, startRGB, endRGB [3]int) string {
+        if !isTerminal() || text == "" {
+                return text
+        }
+
+        var result strings.Builder
+        chars := []rune(text)
+        for i, char := range chars {
+                ratio := float64(i) / float64(len(chars)-1)
+                if len(chars) == 1 {
+                        ratio = 0
+                }
+
+                r := int(float64(startRGB[0]) + (float64(endRGB[0])-float64(startRGB[0]))*ratio)
+                g := int(float64(startRGB[1]) + (float64(endRGB[1])-float64(startRGB[1]))*ratio)
+                b := int(float64(startRGB[2]) + (float64(endRGB[2])-float64(startRGB[2]))*ratio)
+
+                // 确保RGB值在0-255范围内
+                if r < 0 {
+                        r = 0
+                } else if r > 255 {
+                        r = 255
+                }
+                if g < 0 {
+                        g = 0
+                } else if g > 255 {
+                        g = 255
+                }
+                if b < 0 {
+                        b = 0
+                } else if b > 255 {
+                        b = 255
+                }
+
+                result.WriteString(fmt.Sprintf("\033[38;2;%d;%d;%dm%c", r, g, b, char))
+        }
+        return result.String() + "\033[0m" // 重置颜色
 }
 
 func parseArgs(args []string, config *Config) ([]string, error) {
@@ -143,6 +206,11 @@ func parseArgs(args []string, config *Config) ([]string, error) {
 		case "-h":
 			showHelp()
 			os.Exit(0)
+		case "-v":
+                // 应用渐变色输出
+                coloredVersion := addGradient(versionText, [3]int{210, 58, 68}, [3]int{221, 155, 85})
+                fmt.Println(coloredVersion)
+				os.Exit(0)
 		case "-a":
 			if i+1 >= len(args) {
 				return nil, fmt.Errorf("option -a requires an argument")
@@ -383,9 +451,9 @@ func listDir(dir, prefix string, isLast bool) error {
 		if isCompressedFile(fullPath) {
 			nestedCount := getNestedFileCount(fullPath)
 			if nestedCount > 0 {
-				fmt.Printf("%s [嵌套压缩包, 包含 %d 个文件]\n", entry.Name(), nestedCount)
+				fmt.Printf("%s [Nested archive containing %d files]\n", entry.Name(), nestedCount)
 			} else {
-				fmt.Printf("%s [嵌套压缩包]\n", entry.Name())
+				fmt.Printf("%s [Nested archive]\n", entry.Name())
 			}
 		} else if entry.IsDir() {
 			fmt.Printf("%s/\n", entry.Name())
@@ -663,8 +731,7 @@ func handleNestedArchives(dir string, deleteFlag string, listFlag bool) error {
 
 	reader := bufio.NewReader(os.Stdin)
 	for _, file := range nestedFiles {
-//		fmt.Printf("是否预览嵌套压缩包? %s \033[32m(y)es\033[0m/\033[31m(n)o\033[0m: ", file)
-		fmt.Printf("是否预览嵌套压缩包? %s (\033[32my\033[0m)es/(\033[31mn\033[0m)o: ", file)
+		fmt.Printf("Preview nested archive? %s (\033[32my\033[0m)es/(\033[31mn\033[0m)o: ", file)
 		answer, err := reader.ReadString('\n')
 		if err != nil {
 			continue
@@ -692,14 +759,13 @@ func handleNestedArchives(dir string, deleteFlag string, listFlag bool) error {
 
 				os.Remove(filepath.Join(tmpdir, basefile))
 
-				fmt.Println("\n嵌套压缩包内容:")
+				fmt.Println("\nContents of nested archive:")
 				listDir(tmpdir, "", false)
 
 				handleNestedArchives(tmpdir, "false", true)
 
 				if deleteFlag == "ask" {
-//					fmt.Printf("是否删除嵌套压缩包? %s \033[32m(y)es\033[0m/\033[31m(n)o\033[0m: ", file)
-					fmt.Printf("是否删除嵌套压缩包? %s (\033[32my\033[0m)es/(\033[31mn\033[0m)o: ", file)
+					fmt.Printf("Delete nested archive? %s (\033[32my\033[0m)es/(\033[31mn\033[0m)o: ", file)
 					delAnswer, err := reader.ReadString('\n')
 					if err == nil {
 						delAnswer = strings.TrimSpace(strings.ToLower(delAnswer))
@@ -721,8 +787,7 @@ func handleNestedArchives(dir string, deleteFlag string, listFlag bool) error {
 				}
 
 				if deleteFlag == "ask" {
-//					fmt.Printf("是否删除嵌套压缩包? %s \033[32m(y)es\033[0m/\033[31m(n)o\033[0m: ", file)
-					fmt.Printf("是否删除嵌套压缩包? %s (\033[32my\033[0m)es/(\033[31mn\033[0m)o: ", file)
+					fmt.Printf("Delete nested archive? %s (\033[32my\033[0m)es/(\033[31mn\033[0m)o: ", file)
 					delAnswer, err := reader.ReadString('\n')
 					if err == nil {
 						delAnswer = strings.TrimSpace(strings.ToLower(delAnswer))
