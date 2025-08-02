@@ -482,16 +482,23 @@ func getNestedFileCount(archive string) int {
 			return 0
 		}
 		lines := strings.Split(string(output), "\n")
-		for _, line := range lines {
+		// 从后向前查找真正的总结行
+		for i := len(lines) - 1; i >= 0; i-- {
+			line := lines[i]
+			if strings.Contains(line, "files") && strings.Contains(line, "archive:") {
+				continue // 跳过标题行
+			}
 			if strings.Contains(line, "files") {
 				fields := strings.Fields(line)
-				if len(fields) > 0 {
-					if count, err := strconv.Atoi(fields[0]); err == nil {
+				if len(fields) >= 2 {
+					// 尝试解析倒数第二个字段（文件数量）
+					if count, err := strconv.Atoi(fields[len(fields)-2]); err == nil {
 						return count
 					}
 				}
 			}
 		}
+		return 0
 	case strings.HasSuffix(archive, ".tar") || strings.Contains(archive, ".tar."):
 		cmd := exec.Command("tar", "tf", archive)
 		output, err := cmd.Output()
