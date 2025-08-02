@@ -7,8 +7,6 @@
 
 - **多格式支持**: 自动检测并解压 `tar`, `zip`, `rar`, `gzip`, `bzip2`, `xz`, `zstd`, `7z` 等格式
   **Multi-format support**: Automatically detects and extracts formats like `tar`, `zip`, `rar`, `gzip`, `bzip2`, `xz`, `zstd`, `7z`
-- **递归解压**: 自动检测并解压嵌套的归档文件 (`-r` 选项)
-  **Recursive extraction**: Automatically detects and extracts nested archives (with `-r` option)
 - **批量处理**: 支持同时解压多个文件
   **Batch processing**: Supports extracting multiple files simultaneously
 
@@ -18,7 +16,7 @@
 
 
 ```bash
-go install github.com/Geekstrange/Unbox@latest
+go install github.com/Geekstrange/------Unbox@latest
 ```
 
 ### 依赖说明 / Dependency Notes
@@ -45,23 +43,15 @@ Unbox file1.tar file2.zip # 批量解压 / Batch extraction
 
 ### 常用选项 / Common Options
 
-| 选项 / Option | 描述 / Description                                     | 示例 / Example        |
-| ------------- | ------------------------------------------------------ | --------------------- |
-| `-r`          | 递归解压嵌套归档 / Recursively extract nested archives | `Unbox -r bundle.zip` |
-| `-l`          | 列出归档内容 / List archive contents                   | `Unbox -l files.rar`  |
-| `-o`          | 解压后删除源文件 / Delete source file after extraction | `Unbox -o update.zip` |
-| `-s`          | 显示支持格式列表 / Show supported formats list         | `Unbox -s`            |
-| `-h`          | 显示帮助信息 / Show help information                   | `Unbox -h`            |
-| `--version`   | 显示版本信息 / Show version information                | `Unbox --version`     |
-
-### 递归解压示例 / Recursive Extraction Example
-
-```bash
-Unbox -r software_bundle.zip
-# 输出: / Output:
-# 正在解压 software_bundle.zip 到 software_bundle... / Extracting software_bundle.zip to software_bundle...
-# 开始递归解压嵌套文件: software_bundle / Starting recursive extraction of nested files: software_bundle
-```
+| 选项 / Option | 描述 / Description                                                     | 示例 / Example                 |
+| ------------- | ---------------------------------------------------------------------- | ------------------------------ |
+| `-o`          | 解压后删除源文件 / Delete original archive after successful extraction | `unbox -o bundle.zip`          |
+| `-e`          | 提取指定文件 / Extract specific file from the archive                  | `unbox -e files.rar`           |
+| `-l`          | 预览压缩包内容 / Display the contents of the archive                   | `unbox -l update.zip`          |
+| `-a`          | 向压缩包添加内容 / Add files to the archived                           | `unbox -a file.txt archive.zip`|
+| `-d`          | 删除压缩包内指定内容 / Delete file form the archive                    | `unbox -d archive.zip`         |
+| `-h`          | 显示帮助信息 / Show this help message                                  | `unbox -h`                     |
+| `-v`          | 显示版本信息 / Show version information                                | `unbox -v`                     |
 
 ### 解压行为说明 / Extraction Behavior Notes
 
