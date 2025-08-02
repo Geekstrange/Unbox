@@ -387,22 +387,27 @@ func addFilesToArchive(archive string, filesToAdd []string) error {
 }
 
 func compressArchive(archive, sourceDir string) error {
-	switch {
-	case strings.HasSuffix(archive, ".zip"):
-		return runCommand("zip", "-jr", archive, sourceDir+"/*")
-	case strings.HasSuffix(archive, ".tar"):
-		return runCommand("tar", "cf", archive, "-C", sourceDir, ".")
-	case strings.HasSuffix(archive, ".tar.gz") || strings.HasSuffix(archive, ".tgz"):
-		return runCommand("tar", "czf", archive, "-C", sourceDir, ".")
-	case strings.HasSuffix(archive, ".tar.bz2") || strings.HasSuffix(archive, ".tbz2"):
-		return runCommand("tar", "cjf", archive, "-C", sourceDir, ".")
-	case strings.HasSuffix(archive, ".tar.xz") || strings.HasSuffix(archive, ".txz"):
-		return runCommand("tar", "cJf", archive, "-C", sourceDir, ".")
-	case strings.HasSuffix(archive, ".7z"):
-		return runCommand("7z", "a", archive, sourceDir+"/*")
-	default:
-		return fmt.Errorf("unsupported format for adding files: %s", archive)
-	}
+    // 压缩前先删除原归档文件, 确保完全替换
+    if err := os.Remove(archive); err != nil && !os.IsNotExist(err) {
+        return fmt.Errorf("failed to remove original archive: %v", err)
+    }
+
+    switch {
+    case strings.HasSuffix(archive, ".zip"):
+        return runCommand("zip", "-jr", archive, sourceDir+"/.")
+    case strings.HasSuffix(archive, ".tar"):
+        return runCommand("tar", "cf", archive, "-C", sourceDir, ".")
+    case strings.HasSuffix(archive, ".tar.gz") || strings.HasSuffix(archive, ".tgz"):
+        return runCommand("tar", "czf", archive, "-C", sourceDir, ".")
+    case strings.HasSuffix(archive, ".tar.bz2") || strings.HasSuffix(archive, ".tbz2"):
+        return runCommand("tar", "cjf", archive, "-C", sourceDir, ".")
+    case strings.HasSuffix(archive, ".tar.xz") || strings.HasSuffix(archive, ".txz"):
+        return runCommand("tar", "cJf", archive, "-C", sourceDir, ".")
+    case strings.HasSuffix(archive, ".7z"):
+        return runCommand("7z", "a", archive, sourceDir+"/.")
+    default:
+        return fmt.Errorf("unsupported format for adding files: %s", archive)
+    }
 }
 
 func listDir(dir, prefix string, isLast bool) error {
@@ -491,7 +496,7 @@ func getNestedFileCount(archive string) int {
 			if strings.Contains(line, "files") {
 				fields := strings.Fields(line)
 				if len(fields) >= 2 {
-					// 尝试解析倒数第二个字段（文件数量）
+					// 尝试解析倒数第二个字段 (文件数量)
 					if count, err := strconv.Atoi(fields[len(fields)-2]); err == nil {
 						return count
 					}
@@ -658,7 +663,7 @@ func deleteFilesFromArchive(mainArchive string, filesToDelete []string) error {
 	}
 
 	fmt.Printf("Recompressing main archive: %s\n", mainArchive)
-	os.Remove(mainArchive)
+	// 压缩生成新文件
 	if err := compressArchive(mainArchive, mainTmpdir); err != nil {
 		return err
 	}
