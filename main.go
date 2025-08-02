@@ -13,12 +13,13 @@ import (
 )
 
 type Config struct {
-	deleteOrigin  bool
-	listContent   bool
-	addFiles      []string
-	deleteContent bool
-	contentMap    map[int]string
-	currentNumber int
+	deleteOrigin   bool
+	listContent    bool
+	addFiles       []string
+	deleteContent  bool
+	extractContent bool
+	contentMap     map[int]string
+	currentNumber  int
 }
 
 func main() {
@@ -62,6 +63,23 @@ func main() {
 		return
 	}
 
+	// Handle extract content mode
+	if config.extractContent {
+		if len(files) != 1 || len(config.addFiles) > 0 || config.deleteOrigin || config.listContent || config.deleteContent {
+			fmt.Fprintln(os.Stderr, "Error: -e option can only be used alone with exactly one archive file")
+			os.Exit(1)
+		}
+		if !isCompressedFile(files[0]) {
+			fmt.Fprintf(os.Stderr, "Error: '%s' is not a supported archive format\n", files[0])
+			os.Exit(1)
+		}
+		if err := processExtract(files[0], config); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	// Handle add files mode
 	if len(config.addFiles) > 0 {
 		if len(files) != 1 {
@@ -94,6 +112,7 @@ func showHelp() {
     fmt.Printf(`
 %s[96mOptions:%s
     %s[32m-o%s      Delete original archive after successful extraction.
+    %s[32m-e%s      Extract specific file from the archive.
     %s[32m-l%s      Display the contents of the archive.
     %s[32m-a%s      Add files to the archived.
     %s[32m-d%s      Delete file form the archive.
@@ -118,12 +137,13 @@ func showHelp() {
         "\033", ansiReset,
         "\033", ansiReset,
         "\033", ansiReset,
+        "\033", ansiReset,
     )
 }
 
 const (
         versionText = `
-------------Unbox version 0.0.4------------
+------------Unbox version 0.0.5------------
 Copyright 2025 Geekstrange
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -199,6 +219,8 @@ func parseArgs(args []string, config *Config) ([]string, error) {
 		switch arg {
 		case "-o":
 			config.deleteOrigin = true
+		case "-e":
+			config.extractContent = true
 		case "-l":
 			config.listContent = true
 		case "-d":
@@ -668,6 +690,156 @@ func deleteFilesFromArchive(mainArchive string, filesToDelete []string) error {
 		return err
 	}
 	fmt.Println("Delete operation completed")
+	return nil
+}
+
+func processExtract(archive string, config *Config) error {
+	fmt.Println("Listing archive contents:")
+
+	config.contentMap = make(map[int]string)
+	config.currentNumber = 1
+	if err := listArchiveContents(archive, "", config); err != nil {
+		return err
+	}
+
+	if len(config.contentMap) == 0 {
+		fmt.Println("Archive is empty, no content to extract")
+		return nil
+	}
+
+	fmt.Print("Enter the number(s) of the file(s) to extract: ")
+	reader := bufio.NewReader(os.Stdin)
+	input, err := reader.ReadString('\n')
+	if err != nil {
+		return err
+	}
+
+	input = strings.TrimSpace(input)
+	numbers := strings.Fields(input)
+	var filesToExtract []string
+
+	for _, numStr := range numbers {
+		num, err := strconv.Atoi(numStr)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: '%s' is not a valid number, skipping\n", numStr)
+			continue
+		}
+		if entry, exists := config.contentMap[num]; exists {
+			filesToExtract = append(filesToExtract, entry)
+		} else {
+			fmt.Fprintf(os.Stderr, "Warning: number '%d' does not exist, skipping\n", num)
+		}
+	}
+
+	if len(filesToExtract) == 0 {
+		fmt.Println("No valid files to extract")
+		return nil
+	}
+
+	return extractFilesFromArchive(archive, filesToExtract)
+}
+
+func extractFilesFromArchive(mainArchive string, filesToExtract []string) error {
+	mainTmpdir, err := createTempDir("ub_extract_")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(mainTmpdir)
+
+	fmt.Printf("Extracting archive to temporary directory: %s\n", mainTmpdir)
+
+	if err := extractArchive(mainArchive, mainTmpdir); err != nil {
+		return fmt.Errorf("failed to extract main archive: %v", err)
+	}
+
+	for _, entry := range filesToExtract {
+		parts := strings.SplitN(entry, ":", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		archive := parts[0]
+		relPath := parts[1]
+
+		var nestedArchiveInMain string
+		if archive != mainArchive {
+			// 查找嵌套归档
+			err := filepath.Walk(mainTmpdir, func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+				if filepath.Base(path) == filepath.Base(archive) {
+					nestedArchiveInMain = path
+					return filepath.SkipDir
+				}
+				return nil
+			})
+			if err != nil || nestedArchiveInMain == "" {
+				fmt.Fprintf(os.Stderr, "Warning: nested archive '%s' not found, skipping extraction of '%s'\n", archive, relPath)
+				continue
+			}
+		} else {
+			nestedArchiveInMain = mainTmpdir
+		}
+
+		if archive != mainArchive {
+			// 处理嵌套归档中的文件
+			nestedTmpdir, err := createTempDir("ub_nested_extract_")
+			if err != nil {
+				continue
+			}
+
+			if err := extractArchive(nestedArchiveInMain, nestedTmpdir); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: cannot extract nested archive '%s', skipping\n", nestedArchiveInMain)
+				os.RemoveAll(nestedTmpdir)
+				continue
+			}
+
+			sourceFile := filepath.Join(nestedTmpdir, relPath)
+			if _, err := os.Stat(sourceFile); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: file '%s' not found in nested archive, skipping\n", relPath)
+				os.RemoveAll(nestedTmpdir)
+				continue
+			}
+
+			// 确保目标目录存在
+			destFile := filepath.Join(".", relPath)
+			if err := os.MkdirAll(filepath.Dir(destFile), 0755); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to create directory for '%s': %v\n", destFile, err)
+				os.RemoveAll(nestedTmpdir)
+				continue
+			}
+
+			// 复制文件到当前目录
+			if err := copyFile(sourceFile, destFile); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to extract '%s': %v\n", relPath, err)
+			} else {
+				fmt.Printf("Extracted: %s\n", destFile)
+			}
+
+			os.RemoveAll(nestedTmpdir)
+		} else {
+			// 处理主归档中的文件
+			sourceFile := filepath.Join(mainTmpdir, relPath)
+			if _, err := os.Stat(sourceFile); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: file '%s' not found, skipping\n", relPath)
+				continue
+			}
+
+			destFile := filepath.Join(".", relPath)
+			if err := os.MkdirAll(filepath.Dir(destFile), 0755); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to create directory for '%s': %v\n", destFile, err)
+				continue
+			}
+
+			if err := copyFile(sourceFile, destFile); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to extract '%s': %v\n", relPath, err)
+			} else {
+				fmt.Printf("Extracted: %s\n", destFile)
+			}
+		}
+	}
+
+	fmt.Println("Extract operation completed")
 	return nil
 }
 
