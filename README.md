@@ -166,6 +166,13 @@ arch
    - If `aarch64` is displayed, your system is **ARM64**
    - 如果显示`loong64`, 则您的系统是**LoongArch**
    - If `loong64` is displayed, your system is **LoongArch**
+
+## 贡献指南 / Contributing
+
+本项目遵循 [约定式提交](https://www.conventionalcommits.org/zh-hans/v1.0.0/) 规范，请使用 `fix:`、`feat:`、`refactor:` 等前缀编写 commit message。
+
+This project follows the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification. Please prefix your commit messages with `fix:`, `feat:`, `refactor:`, etc.
+
 ## 许可证 / License
 
 <a href="https://www.apache.org/licenses/LICENSE-2.0.html" target="_blank">

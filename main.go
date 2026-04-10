@@ -132,28 +132,25 @@ func main() {
 }
 
 func showHelp() {
-	ansiReset := "\033[0m"
-	fmt.Printf(`
-%s[96mOptions:%s
-    %s[32m-o%s      Delete original archive after successful extraction.
-    %s[32m-e%s      Extract specific file from the archive.
-    %s[32m-l%s      Display the contents of the archive.
-    %s[32m-a%s      Add files to the archived.
-    %s[32m-d%s      Delete file form the archive.
-    %s[32m-h%s      Show this help message.
-    %s[32m-v%s      Show version and license information.
+	// 直接使用字符串拼接硬编码 ANSI 颜色，避免 Printf 占位符数量不匹配的问题
+	fmt.Print(`
+` + "\033[96m" + `Options:` + "\033[0m" + `
+    ` + "\033[32m" + `-o` + "\033[0m" + `      Delete original archive after successful extraction.
+    ` + "\033[32m" + `-e` + "\033[0m" + `      Extract specific file from the archive.
+    ` + "\033[32m" + `-l` + "\033[0m" + `      Display the contents of the archive.
+    ` + "\033[32m" + `-a` + "\033[0m" + `      Add files to the archive.
+    ` + "\033[32m" + `-d` + "\033[0m" + `      Delete file from the archive.
+    ` + "\033[32m" + `-h` + "\033[0m" + `      Show this help message.
+    ` + "\033[32m" + `-v` + "\033[0m" + `      Show version and license information.
 
-%s[96mExamples:%s
-    %s[93munbox archive.zip backup.tar%s
-    %s[93munbox -l archive.zip%s
-    %s[93munbox -a file archive.zip%s
-    %s[93munbox -o *.zip *.tar.gz%s
-`,
-		"\033", ansiReset, "\033", ansiReset, "\033", ansiReset,
-		"\033", ansiReset, "\033", ansiReset, "\033", ansiReset,
-		"\033", ansiReset, "\033", ansiReset, "\033", ansiReset,
-		"\033", ansiReset, "\033", ansiReset, "\033", ansiReset,
-	)
+` + "\033[96m" + `Examples:` + "\033[0m" + `
+	` + "\033[93m" + `unbox -o *.zip *.tar.gz` + "\033[0m" + `
+	` + "\033[93m" + `unbox -e archive` + "\033[0m" + `
+	` + "\033[93m" + `unbox -l archive.zip` + "\033[0m" + `
+	` + "\033[93m" + `unbox -a file archive.zip` + "\033[0m" + `
+	` + "\033[93m" + `unbox -d archive.zip` + "\033[0m" + `
+    
+`)
 }
 
 const versionText = `
@@ -265,57 +262,33 @@ func isCompressedFile(filename string) bool {
 }
 
 func extractArchive(file, dest string) error {
-	if dest == "" { dest = "." }
+	if dest == "" {
+		dest = "."
+	}
+
+	// 优先检查是否安装了 7z，因为我们将把它作为主要的解压引擎
+	has7z := commandExists("7z")
 
 	switch {
+	// 1. Tar 家族：原生 tar 命令支持一步解压到底，体验最好（7z 解压 tar.gz 需要两步）
 	case strings.HasSuffix(file, ".tar.bz2") || strings.HasSuffix(file, ".tbz2"):
 		return runCommand("tar", "xjf", file, "-C", dest)
 	case strings.HasSuffix(file, ".tar.gz") || strings.HasSuffix(file, ".tgz"):
 		return runCommand("tar", "xzf", file, "-C", dest)
 	case strings.HasSuffix(file, ".tar.xz") || strings.HasSuffix(file, ".txz"):
 		return runCommand("tar", "xJf", file, "-C", dest)
-	case strings.HasSuffix(file, ".bz2"):
-		if dest != "." {
-			if err := copyFile(file, filepath.Join(dest, filepath.Base(file))); err != nil { return err }
-			return runCommandInDir(dest, "bunzip2", filepath.Base(file))
-		}
-		return runCommand("bunzip2", file)
-	case strings.HasSuffix(file, ".rar"):
-		if !commandExists("unrar") { return fmt.Errorf("unrar is required to extract .rar files") }
-		return runCommand("unrar", "x", file, dest)
-	case strings.HasSuffix(file, ".gz"):
-		if dest != "." {
-			if err := copyFile(file, filepath.Join(dest, filepath.Base(file))); err != nil { return err }
-			return runCommandInDir(dest, "gunzip", filepath.Base(file))
-		}
-		return runCommand("gunzip", file)
 	case strings.HasSuffix(file, ".tar"):
 		return runCommand("tar", "xf", file, "-C", dest)
-	case strings.HasSuffix(file, ".zip"):
-		if dest != "." { return runCommand("unzip", "-q", file, "-d", dest) }
-		return runCommand("unzip", file)
-	case strings.HasSuffix(file, ".Z"):
-		if dest != "." {
-			if err := copyFile(file, filepath.Join(dest, filepath.Base(file))); err != nil { return err }
-			return runCommandInDir(dest, "uncompress", filepath.Base(file))
-		}
-		return runCommand("uncompress", file)
-	case strings.HasSuffix(file, ".7z"):
-		return runCommand("7z", "x", file, "-o"+dest)
-	case strings.HasSuffix(file, ".xz"):
-		if dest != "." {
-			if err := copyFile(file, filepath.Join(dest, filepath.Base(file))); err != nil { return err }
-			return runCommandInDir(dest, "unxz", filepath.Base(file))
-		}
-		return runCommand("unxz", file)
-	case strings.HasSuffix(file, ".lzma"):
-		if dest != "." {
-			if err := copyFile(file, filepath.Join(dest, filepath.Base(file))); err != nil { return err }
-			return runCommandInDir(dest, "unlzma", filepath.Base(file))
-		}
-		return runCommand("unlzma", file)
+
+	// 2. 其他所有格式：统统交给 7z
 	default:
-		return fmt.Errorf("unsupported format: %s", file)
+		if !has7z {
+			return fmt.Errorf("7z command is required to extract '%s', please install p7zip", filepath.Base(file))
+		}
+		// 7z x: 保持目录结构解压
+		// -y: 遇到提示自动选 yes，防止卡在终端等待输入
+		// -o: 指定输出目录（注意：-o 和路径之间没有空格）
+		return runCommand("7z", "x", "-y", file, "-o"+dest)
 	}
 }
 
@@ -610,15 +583,31 @@ func extractSelectedFiles(mainArchive string, filesToExtract []*FileLocation) er
 
 // ============== 通用逻辑 ==============
 func addFilesToArchive(archive string, filesToAdd []string) error {
+	absArchive, err := filepath.Abs(archive)
+	if err != nil {
+		return fmt.Errorf("failed to resolve absolute path for archive: %v", err)
+	}
+
 	tmpdir, err := createTempDir("ub_add_")
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	defer os.RemoveAll(tmpdir)
 
 	if err := extractArchive(archive, tmpdir); err != nil {
 		return fmt.Errorf("extraction failed, cannot add files: %v", err)
 	}
 
+	// 新增：记录真实添加成功的文件数量
+	addedCount := 0
+
 	for _, file := range filesToAdd {
+		absFile, _ := filepath.Abs(file)
+		if absFile == absArchive {
+			fmt.Fprintf(os.Stderr, "Warning: cannot add archive '%s' to itself, skipping\n", file)
+			continue
+		}
+
 		if _, err := os.Stat(file); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: file '%s' does not exist, skipping\n", file)
 			continue
@@ -626,34 +615,50 @@ func addFilesToArchive(archive string, filesToAdd []string) error {
 		dst := filepath.Join(tmpdir, filepath.Base(file))
 		if err := copyFile(file, dst); err == nil {
 			fmt.Printf("Copied: %s\n", file)
+			addedCount++ // 新增：复制成功，计数器 +1
 		}
 	}
 
+	// 新增：拦截器。如果没有任何文件被成功复制，直接退出，不要重压缩
+	if addedCount == 0 {
+		fmt.Println("No new files were added. Archive remains unchanged.")
+		return nil
+	}
+
 	fmt.Printf("Recompressing to: %s\n", archive)
-	if err := compressArchive(archive, tmpdir); err != nil { return err }
+	if err := compressArchive(absArchive, tmpdir); err != nil {
+		return err
+	}
 
 	fmt.Println("Files added successfully")
 	return nil
 }
 
 func compressArchive(archive, sourceDir string) error {
-	if err := os.Remove(archive); err != nil && !os.IsNotExist(err) {
+	// 无论上层传入什么，强制转换为绝对路径，保证安全
+	absArchive, err := filepath.Abs(archive)
+	if err != nil {
+		return fmt.Errorf("failed to get absolute path: %v", err)
+	}
+
+	if err := os.Remove(absArchive); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to remove original archive: %v", err)
 	}
 
+	// 命令全部使用绝对路径 absArchive 进行输出
 	switch {
 	case strings.HasSuffix(archive, ".zip"):
-		return runCommandInDir(sourceDir, "zip", "-qr", archive, ".")
+		return runCommandInDir(sourceDir, "zip", "-qr", absArchive, ".")
 	case strings.HasSuffix(archive, ".tar"):
-		return runCommand("tar", "cf", archive, "-C", sourceDir, ".")
+		return runCommand("tar", "cf", absArchive, "-C", sourceDir, ".")
 	case strings.HasSuffix(archive, ".tar.gz") || strings.HasSuffix(archive, ".tgz"):
-		return runCommand("tar", "czf", archive, "-C", sourceDir, ".")
+		return runCommand("tar", "czf", absArchive, "-C", sourceDir, ".")
 	case strings.HasSuffix(archive, ".tar.bz2") || strings.HasSuffix(archive, ".tbz2"):
-		return runCommand("tar", "cjf", archive, "-C", sourceDir, ".")
+		return runCommand("tar", "cjf", absArchive, "-C", sourceDir, ".")
 	case strings.HasSuffix(archive, ".tar.xz") || strings.HasSuffix(archive, ".txz"):
-		return runCommand("tar", "cJf", archive, "-C", sourceDir, ".")
+		return runCommand("tar", "cJf", absArchive, "-C", sourceDir, ".")
 	case strings.HasSuffix(archive, ".7z"):
-		return runCommand("7z", "a", archive, sourceDir+"/.")
+		return runCommand("7z", "a", absArchive, sourceDir+"/.")
 	default:
 		return fmt.Errorf("unsupported format for adding files: %s", archive)
 	}
