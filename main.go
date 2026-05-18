@@ -6,10 +6,12 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
 // FileLocation 精确记录文件在归档中的位置，防止嵌套同名归档导致误判
@@ -30,6 +32,14 @@ type Config struct {
 }
 
 func main() {
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-sig
+		fmt.Print("\033[0m")
+		os.Exit(1)
+	}()
+
 	config := &Config{
 		contentMap:    make(map[int]*FileLocation),
 		currentNumber: 1,
@@ -56,16 +66,12 @@ func main() {
 	// 1. Handle List mode (-l)
 	if config.listContent {
 		for _, file := range files {
-			fmt.Println("==================================")
-			if !isCompressedFile(file) {
-				fmt.Fprintf(os.Stderr, "Error: '%s' is not a supported archive format\n", file)
-				continue
-			}
+			fmt.Println("----------------------------------")
 			fmt.Printf("Contents of %s:\n", file)
 			if err := processList(file, config); err != nil {
 				fmt.Fprintf(os.Stderr, "Error listing %s: %v\n", file, err)
 			}
-			fmt.Println("==================================")
+			fmt.Println("----------------------------------")
 		}
 		return
 	}
@@ -74,10 +80,6 @@ func main() {
 	if config.deleteContent {
 		if len(files) != 1 || len(config.addFiles) > 0 || config.deleteOrigin {
 			fmt.Fprintln(os.Stderr, "Error: -d option can only be used alone with exactly one archive file")
-			os.Exit(1)
-		}
-		if !isCompressedFile(files[0]) {
-			fmt.Fprintf(os.Stderr, "Error: '%s' is not a supported archive format\n", files[0])
 			os.Exit(1)
 		}
 		if err := processDelete(files[0], config); err != nil {
@@ -91,10 +93,6 @@ func main() {
 	if config.extractContent {
 		if len(files) != 1 || len(config.addFiles) > 0 || config.deleteOrigin {
 			fmt.Fprintln(os.Stderr, "Error: -e option can only be used alone with exactly one archive file")
-			os.Exit(1)
-		}
-		if !isCompressedFile(files[0]) {
-			fmt.Fprintf(os.Stderr, "Error: '%s' is not a supported archive format\n", files[0])
 			os.Exit(1)
 		}
 		if err := processExtract(files[0], config); err != nil {
@@ -123,11 +121,11 @@ func main() {
 
 	// 5. Default: Process all files (Extract all)
 	for _, file := range files {
-		fmt.Println("==================================")
+		fmt.Println("----------------------------------")
 		if err := processFile(file, config); err != nil {
 			fmt.Fprintf(os.Stderr, "Error processing %s: %v\n", file, err)
 		}
-		fmt.Println("==================================")
+		fmt.Println("----------------------------------")
 	}
 }
 
@@ -145,16 +143,16 @@ func showHelp() {
 
 ` + "\033[96m" + `Examples:` + "\033[0m" + `
 	` + "\033[93m" + `unbox -o *.zip *.tar.gz` + "\033[0m" + `
-	` + "\033[93m" + `unbox -e archive` + "\033[0m" + `
+	` + "\033[93m" + `unbox -e archive.zip` + "\033[0m" + `
 	` + "\033[93m" + `unbox -l archive.zip` + "\033[0m" + `
 	` + "\033[93m" + `unbox -a file archive.zip` + "\033[0m" + `
 	` + "\033[93m" + `unbox -d archive.zip` + "\033[0m" + `
-    
+
 `)
 }
 
 const versionText = `
-------------Unbox version 0.0.5------------
+------------Unbox version 0.0.7------------
 Copyright 2025 Geekstrange
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -249,8 +247,9 @@ func commandExists(cmd string) bool {
 
 func isCompressedFile(filename string) bool {
 	extensions := []string{
-		".tar.bz2", ".tbz2", ".tar.gz", ".tgz", ".tar.xz", ".txz",
-		".bz2", ".rar", ".gz", ".tar", ".zip", ".Z", ".7z", ".xz", ".lzma",
+		".tar.bz2", ".tbz2", ".tar.gz", ".tgz", ".tar.xz", ".txz", ".tar.zst", ".tzst",
+		".bz2", ".rar", ".gz", ".tar", ".zip", ".Z", ".7z", ".xz", ".lzma", ".zst",
+		".cab", ".iso", ".arj", ".lzh", ".cpio", ".rpm", ".deb", ".dmg", ".wim", ".vhd",
 	}
 	filename = strings.ToLower(filename)
 	for _, ext := range extensions {
@@ -277,6 +276,8 @@ func extractArchive(file, dest string) error {
 		return runCommand("tar", "xzf", file, "-C", dest)
 	case strings.HasSuffix(file, ".tar.xz") || strings.HasSuffix(file, ".txz"):
 		return runCommand("tar", "xJf", file, "-C", dest)
+	case strings.HasSuffix(file, ".tar.zst") || strings.HasSuffix(file, ".tzst"):
+		return runCommand("tar", "--zstd", "-xf", file, "-C", dest)
 	case strings.HasSuffix(file, ".tar"):
 		return runCommand("tar", "xf", file, "-C", dest)
 
@@ -351,15 +352,15 @@ func buildArchiveTree(currentExtractDir string, currentRelPath string, prefix st
 
 		var linePrefix, newPrefix string
 		if i == numItems-1 {
-			linePrefix = prefix + "└── "
+			linePrefix = prefix + "╰─ "
 			newPrefix = prefix + "    "
 		} else {
-			linePrefix = prefix + "├── "
+			linePrefix = prefix + "├─ "
 			newPrefix = prefix + "│   "
 		}
 
 		if entry.IsDir() {
-			fmt.Printf("%s\033[34m%s/\033[0m\n", linePrefix, itemName)
+			fmt.Printf("\033[90m%s\033[34m%s/\033[0m\n", linePrefix, itemName)
 			buildArchiveTree(fullPath, itemRelPath, newPrefix, config, nestedArchivePath)
 		} else {
 			isNestedArchive := isCompressedFile(itemName)
@@ -372,7 +373,7 @@ func buildArchiveTree(currentExtractDir string, currentRelPath string, prefix st
 			config.contentMap[config.currentNumber] = loc
 
 			if isNestedArchive && nestedArchivePath == "" {
-				fmt.Printf("%s%d) \033[36m%s\033[0m [Nested Archive]\n", linePrefix, config.currentNumber, itemName)
+				fmt.Printf("\033[90m%s\033[0m%d) \033[36m%s\033[0m [Nested Archive]\n", linePrefix, config.currentNumber, itemName)
 				config.currentNumber++
 
 				nestedTmp, err := createTempDir("ub_nest_")
@@ -383,7 +384,7 @@ func buildArchiveTree(currentExtractDir string, currentRelPath string, prefix st
 					os.RemoveAll(nestedTmp)
 				}
 			} else {
-				fmt.Printf("%s%d) %s\n", linePrefix, config.currentNumber, itemName)
+				fmt.Printf("\033[90m%s\033[0m%d) %s\n", linePrefix, config.currentNumber, itemName)
 				config.currentNumber++
 			}
 		}
@@ -557,7 +558,7 @@ func extractSelectedFiles(mainArchive string, filesToExtract []*FileLocation) er
 			if extractArchive(nestedFileMainPath, nestedTmpdir) == nil {
 				sourceFile = filepath.Join(nestedTmpdir, loc.ItemPath)
 				destFile := filepath.Join(".", filepath.Base(loc.ItemPath))
-				
+
 				if err := os.MkdirAll(filepath.Dir(destFile), 0755); err == nil {
 					if err := copyFile(sourceFile, destFile); err == nil {
 						fmt.Printf("Extracted: %s\n", destFile)
@@ -657,6 +658,8 @@ func compressArchive(archive, sourceDir string) error {
 		return runCommand("tar", "cjf", absArchive, "-C", sourceDir, ".")
 	case strings.HasSuffix(archive, ".tar.xz") || strings.HasSuffix(archive, ".txz"):
 		return runCommand("tar", "cJf", absArchive, "-C", sourceDir, ".")
+	case strings.HasSuffix(archive, ".tar.zst") || strings.HasSuffix(archive, ".tzst"):
+		return runCommand("tar", "--zstd", "-cf", absArchive, "-C", sourceDir, ".")
 	case strings.HasSuffix(archive, ".7z"):
 		return runCommand("7z", "a", absArchive, sourceDir+"/.")
 	default:
@@ -664,13 +667,30 @@ func compressArchive(archive, sourceDir string) error {
 	}
 }
 
+func stripArchiveExt(filename string) string {
+	base := filepath.Base(filename)
+	lower := strings.ToLower(base)
+	compoundExts := []string{".tar.bz2", ".tar.gz", ".tar.xz", ".tar.zst"}
+	for _, ext := range compoundExts {
+		if strings.HasSuffix(lower, ext) {
+			return base[:len(base)-len(ext)]
+		}
+	}
+	return strings.TrimSuffix(base, filepath.Ext(base))
+}
+
 func processFile(file string, config *Config) error {
 	if _, err := os.Stat(file); err != nil {
 		return fmt.Errorf("'%s' is not a valid file", file)
 	}
 
-	fmt.Printf("Extracting: %s\n", file)
-	if err := extractArchive(file, "."); err != nil {
+	dest := stripArchiveExt(file)
+	if err := os.MkdirAll(dest, 0755); err != nil {
+		return fmt.Errorf("failed to create directory '%s': %v", dest, err)
+	}
+
+	fmt.Printf("Extracting: %s -> %s/\n", file, dest)
+	if err := extractArchive(file, dest); err != nil {
 		return err
 	}
 
