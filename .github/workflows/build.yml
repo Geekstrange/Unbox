@@ -1,0 +1,83 @@
+name: Build
+
+# Cross-compiles Unbox and packages release artifacts.
+#
+# NOTE: build.sh is NOT tracked in this repository (it is gitignored), so the
+# build logic is kept inline and self-contained here, mirroring build.sh.
+# Targets: linux/amd64, linux/arm64, linux/loong64.
+
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build (e.g. v0.0.8). Defaults to the tag, else v0.0.0-dev."
+        required: false
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (linux amd64/arm64/loong64)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Resolve version
+        id: ver
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            V="${GITHUB_REF_NAME}"
+          elif [[ -n "${{ inputs.version }}" ]]; then
+            V="${{ inputs.version }}"
+          else
+            V="v0.0.0-dev"
+          fi
+          echo "version=${V}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and package
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.ver.outputs.version }}"
+          mkdir -p release_bin
+          for PLATFORM in linux/amd64 linux/arm64 linux/loong64; do
+            GOOS="${PLATFORM%/*}"
+            GOARCH="${PLATFORM#*/}"
+            echo "::group::Build ${GOOS}/${GOARCH}"
+            CGO_ENABLED=0 GOOS="$GOOS" GOARCH="$GOARCH" \
+              go build -ldflags "-s -w" -o "release_bin/unbox" main.go
+            tar -czf "release_bin/unbox-${VERSION}-${GOOS}_${GOARCH}.tar.gz" \
+              -C release_bin unbox
+            rm -f "release_bin/unbox"
+            echo "::endgroup::"
+          done
+          echo "--- artifacts ---"
+          ls -l release_bin
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: unbox-release
+          path: release_bin/*.tar.gz
+          if-no-files-found: error
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release_bin/*.tar.gz
+          generate_release_notes: true

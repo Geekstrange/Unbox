@@ -32,6 +32,9 @@ sudo apt install unrar p7zip-full zstd
 sudo yum install unrar p7zip zstd
 ```
 
+> **LoongArch (loong64) 用户 / LoongArch users**：7-Zip 官方未提供 loong64 预编译包，请从发行版仓库安装 `7zip`（Alpine：`apk add 7zip`；openKylin/Debian：`apt install 7zip`，旧版可用 `p7zip-full`），或从源码自行编译；否则仅 tar 家族格式可解压。
+> The official 7-Zip does not ship a prebuilt loong64 binary. Install `7zip` from your distribution (Alpine: `apk add 7zip`; openKylin/Debian: `apt install 7zip`, or `p7zip-full` on older releases) or build it from source; otherwise only the tar family can be extracted.
+
 ## 使用指南 / Usage Guide
 
 ### 基本用法 / Basic Usage

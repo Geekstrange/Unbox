@@ -1,0 +1,149 @@
+name: 🐛 Bug Report
+description: Report a reproducible bug in Unbox (smart archive extraction tool).
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report! 🐛
+
+        **Before you submit:**
+        - 🔎 Search [existing issues](https://github.com/Geekstrange/unbox/issues) to avoid duplicates.
+        - 🐧 Unbox targets **Linux** (amd64 / arm64 / loong64). Other platforms are unsupported.
+        - 🧰 Some formats need external tools (`unrar`, `7z`, `zstd`). Please make sure they are installed before reporting.
+        - 🔒 **Do NOT report security vulnerabilities here.** Use private reporting instead (see the contact links).
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug summary
+      description: A clear and concise description of the bug.
+      placeholder: 'e.g. "extracting a .tar.zst archive leaves a stray nested directory"'
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Format detection
+        - Extraction (tar / zip / rar / gz / bz2 / xz / zstd / 7z ...)
+        - Nested / recursive archives
+        - Batch processing (multiple files)
+        - Option -o (delete source)
+        - Option -e (extract specific file)
+        - Option -l (list preview)
+        - Option -a (add to archive)
+        - Option -d (delete inside archive)
+        - Permissions (755 / 644)
+        - Build / installation
+        - Documentation
+        - Other / not sure
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Unbox version
+      description: Output of `unbox -v`.
+      placeholder: "v0.0.8"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os_arch
+    attributes:
+      label: OS / architecture
+      options:
+        - Linux amd64 (x86_64)
+        - Linux arm64 (aarch64)
+        - Linux loong64 (LoongArch)
+        - Other Unix (unsupported)
+    validations:
+      required: true
+
+  - type: input
+    id: archive
+    attributes:
+      label: Archive involved
+      description: Format and, if possible, how it was created.
+      placeholder: "e.g. report.tar.zst created with tar --zstd"
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: external_tools
+    attributes:
+      label: External tools installed
+      description: Some formats depend on system tools. Tick everything available.
+      options:
+        - label: unrar
+        - label: 7z / p7zip
+        - label: zstd
+        - label: none / not sure
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Exact commands. A minimal archive or a way to create one helps a lot.
+      placeholder: |
+        1. ./unbox archive.tar.zst
+        2. ...
+        3. Observe ...
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include the exact error output and exit code.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / error output
+      render: shell
+    validations:
+      required: false
+
+  - type: input
+    id: go_version
+    attributes:
+      label: Go version (only if built from source)
+      placeholder: "go 1.24.4"
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Confirmations
+      options:
+        - label: I have searched existing issues and this is not a duplicate.
+          required: true
+        - label: I confirm this is NOT a security vulnerability (report those privately instead).
+          required: true
+        - label: I agree to follow this project's Code of Conduct.
+          required: true
